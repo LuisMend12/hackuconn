@@ -10,29 +10,30 @@ from image_obfuscator import obfuscate_image
 st.set_page_config(page_title="HackUConn Obfuscator", page_icon="📷", layout="wide")
 
 # -----------------------------
-# Minimal "Instagram-like" CSS
+# Instagram DARK MODE CSS
 # -----------------------------
 st.markdown(
     """
     <style>
-      /* App background */
+      /* --- IG Dark base --- */
       .stApp {
-        background: linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%);
+        background: #000000; /* Instagram dark */
+        color: #f5f5f5;
       }
 
-      /* Make the main area centered and "phone-like" */
+      /* Centered content / phone-ish width */
       section.main > div {
         max-width: 980px;
         margin: 0 auto;
         padding-top: 12px;
       }
 
-      /* Card */
+      /* Card (IG post container vibe) */
       .ig-card {
-        background: white;
-        border: 1px solid rgba(0,0,0,0.08);
-        border-radius: 18px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        background: #0f0f0f;
+        border: 1px solid #262626; /* IG border */
+        border-radius: 16px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.55);
         padding: 14px 14px 10px 14px;
       }
 
@@ -47,16 +48,18 @@ st.markdown(
         font-weight: 800;
         letter-spacing: -0.5px;
         font-size: 18px;
+        color: #f5f5f5;
       }
       .ig-icons {
         display: flex;
         gap: 10px;
-        opacity: 0.85;
+        opacity: 0.9;
         font-size: 18px;
+        color: #f5f5f5;
       }
       .ig-divider {
         height: 1px;
-        background: rgba(0,0,0,0.08);
+        background: #262626;
         margin: 6px 0 12px 0;
       }
 
@@ -68,42 +71,92 @@ st.markdown(
         margin: 8px 0 8px 0;
       }
       .chip {
-        border: 1px solid rgba(0,0,0,0.12);
+        border: 1px solid #262626;
         padding: 8px 12px;
         border-radius: 999px;
-        background: #fff;
+        background: #121212;
         font-size: 13px;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+        color: #f5f5f5;
       }
 
       /* Image frame */
       .img-frame {
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
-        border: 1px solid rgba(0,0,0,0.08);
+        border: 1px solid #262626;
+        background: #000;
       }
 
-      /* Buttons look more "app-like" */
+      /* Buttons (IG-like: primary blue, pill) */
       div.stButton > button {
         width: 100%;
         border-radius: 999px !important;
-        padding: 0.8rem 1rem !important;
-        font-weight: 700 !important;
+        padding: 0.78rem 1rem !important;
+        font-weight: 800 !important;
         border: 0 !important;
-        background: linear-gradient(90deg, #fd1d1d 0%, #f56040 35%, #f77737 55%, #fcaf45 80%, #ffdc80 100%) !important;
+        background: #0095f6 !important; /* IG blue */
         color: white !important;
       }
+      div.stButton > button:hover {
+        filter: brightness(0.95);
+      }
+
+      /* Download button: dark outlined */
       div.stDownloadButton > button {
         width: 100%;
         border-radius: 999px !important;
-        padding: 0.8rem 1rem !important;
-        font-weight: 700 !important;
-        border: 1px solid rgba(0,0,0,0.12) !important;
-        background: white !important;
-        color: #111827 !important;
+        padding: 0.78rem 1rem !important;
+        font-weight: 800 !important;
+        border: 1px solid #262626 !important;
+        background: #121212 !important;
+        color: #f5f5f5 !important;
+      }
+      div.stDownloadButton > button:hover {
+        filter: brightness(1.06);
       }
 
-      /* Reduce Streamlit header whitespace */
+      /* File uploader dark */
+      [data-testid="stFileUploader"] section {
+        background: #121212 !important;
+        border: 1px dashed #262626 !important;
+        border-radius: 14px !important;
+        color: #f5f5f5 !important;
+      }
+
+      /* Inputs dark */
+      input, textarea {
+        background: #121212 !important;
+        color: #f5f5f5 !important;
+        border: 1px solid #262626 !important;
+        border-radius: 12px !important;
+      }
+
+      /* Selectbox dark */
+      [data-baseweb="select"] > div {
+        background: #121212 !important;
+        border: 1px solid #262626 !important;
+        border-radius: 12px !important;
+        color: #f5f5f5 !important;
+      }
+
+      /* Expanders */
+      details {
+        background: #0f0f0f !important;
+        border: 1px solid #262626 !important;
+        border-radius: 14px !important;
+        padding: 6px 10px !important;
+      }
+
+      /* Alerts */
+      [data-testid="stAlert"] {
+        background: #121212 !important;
+        border: 1px solid #262626 !important;
+        border-radius: 14px !important;
+        color: #f5f5f5 !important;
+      }
+
+      /* Reduce Streamlit chrome */
       header {visibility: hidden;}
       footer {visibility: hidden;}
 
@@ -112,11 +165,17 @@ st.markdown(
         font-size: 14px;
         font-weight: 800;
         margin: 8px 0 8px 0;
-        opacity: 0.85;
+        opacity: 0.92;
+        color: #f5f5f5;
       }
       .muted {
         font-size: 13px;
-        opacity: 0.7;
+        color: #a8a8a8;
+      }
+
+      /* Make all normal text lighter */
+      p, label, span, div {
+        color: #f5f5f5 !important;
       }
     </style>
     """,
@@ -147,19 +206,17 @@ uploaded_file = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", 
 # Settings header
 st.markdown('<div class="section-title">Settings</div>', unsafe_allow_html=True)
 
-# "Story chip" quick toggles
+# Quick toggles
 chipA, chipB, chipC, chipD = st.columns([1, 1, 1, 1])
 with chipA:
     pixelate = st.toggle("Pixelate", value=False)
 with chipB:
     blur = st.toggle("Blur", value=False)
 with chipC:
-    # New: choose watermark mode (works with the upgraded obfuscator)
     watermark_mode = st.selectbox("Watermark", ["invisible", "visible", "none"], index=0)
 with chipD:
     fmt = st.selectbox("Download as", ["PNG (recommended)", "JPG"], index=0)
 
-# Detailed controls (collapsed feel)
 with st.expander("More controls", expanded=False):
     c1, c2 = st.columns(2)
     with c1:
@@ -222,7 +279,6 @@ if uploaded_file is not None:
             st.image(output_image, use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-            # Prepare download
             buffer = io.BytesIO()
 
             if fmt.startswith("PNG"):
@@ -230,7 +286,6 @@ if uploaded_file is not None:
                 filename = "obfuscated.png"
                 mime = "image/png"
             else:
-                # JPG may destroy invisible watermark marker (compression)
                 output_image.save(buffer, format="JPEG", quality=95)
                 filename = "obfuscated.jpg"
                 mime = "image/jpeg"
@@ -246,4 +301,4 @@ if uploaded_file is not None:
 else:
     st.info("Upload an image to get started.")
 
-st.markdown("</div>", unsafe_allow_html=True)  # close ig-card
+st.markdown("</div>", unsafe_allow_html=True)
