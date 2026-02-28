@@ -1,7 +1,3 @@
-Here is a complete **README.md** file for your image filtering project.
-
-You can copy this directly into a file named `README.md`.
-
 ---
 
 ````markdown
