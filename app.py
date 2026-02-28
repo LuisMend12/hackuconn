@@ -1,62 +1,105 @@
 import streamlit as st
-import subprocess
-import shlex
-from pathlib import Path
+from PIL import Image
+import io
 
-st.title("HackUConn Image Tools")
+# Import your obfuscator function
+from image_obfuscator import obfuscate_image
 
-st.subheader("Run Image Obfuscator")
+st.set_page_config(layout="wide")
+st.title("HackUConn Image Obfuscator")
 
-input_dir = st.text_input("Input Images Folder", value="images")
-output_dir = st.text_input("Output Folder", value="output")
+st.subheader("Upload an Image")
 
-log_box = st.empty()
+uploaded_file = st.file_uploader(
+    "Choose an image",
+    type=["png", "jpg", "jpeg", "webp"]
+)
 
-def run_command(cmd):
-    log_box.code(f"$ {cmd}\n", language="bash")
-    process = subprocess.Popen(
-        shlex.split(cmd),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
+# ---- Controls ----
+st.subheader("Settings")
+
+colA, colB, colC = st.columns(3)
+
+with colA:
+    watermark_text = st.text_input("Watermark text", value="DO NOT TRAIN")
+
+with colB:
+    watermark_opacity = st.slider(
+        "Watermark opacity",
+        min_value=0,
+        max_value=255,
+        value=70,
+        step=5
     )
 
-    logs = ""
-    for line in process.stdout:
-        logs += line
-        log_box.code(f"$ {cmd}\n\n{logs}", language="bash")
-
-    return process.wait()
-
-if st.button("Run Image Obfuscator"):
-    cmd = f"python3 image_obfuscator.py --in_dir {input_dir} --out_dir {output_dir}"
-    rc = run_command(cmd)
-    st.success(f"Finished with exit code {rc}")
-
-st.divider()
-
-st.subheader("Run Image Quality Filter")
-
-report_file = st.text_input("Report Output File", value="report.txt")
-
-if st.button("Run Image Filter"):
-    cmd = f"python3 filter_images.py --in_dir {input_dir} --out_txt {report_file}"
-    rc = run_command(cmd)
-    st.success(f"Filter completed with exit code {rc}")
-
-st.divider()
-
-st.subheader("Results")
-
-if Path(output_dir).exists():
-    st.write("Generated files:")
-    for p in sorted(Path(output_dir).glob("*"))[:20]:
-        st.write(str(p))
-
-if Path(report_file).exists():
-    st.download_button(
-        "Download Report",
-        data=open(report_file, "rb"),
-        file_name=report_file,
+with colC:
+    watermark_scale = st.slider(
+        "Watermark size",
+        min_value=0.02,
+        max_value=0.15,
+        value=0.06,
+        step=0.01
     )
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    pixelate = st.checkbox("Pixelate", value=False)
+
+with col2:
+    pixelate_factor = st.slider(
+        "Pixelate factor",
+        2,
+        30,
+        10,
+        1,
+        disabled=not pixelate
+    )
+
+with col3:
+    blur = st.checkbox("Blur", value=False)
+
+blur_radius = st.slider(
+    "Blur radius",
+    0.0,
+    6.0,
+    1.2,
+    0.1,
+    disabled=not blur
+)
+
+# ---- Processing ----
+if uploaded_file is not None:
+
+    original_image = Image.open(uploaded_file).convert("RGB")
+
+    st.image(original_image, caption="Original Image", use_column_width=True)
+
+    if st.button("Obfuscate Image"):
+
+        output_image = obfuscate_image(
+            original_image,
+            watermark_text=watermark_text,
+            watermark_opacity=watermark_opacity,
+            watermark_scale=watermark_scale,
+            pixelate=pixelate,
+            pixelate_factor=pixelate_factor,
+            blur=blur,
+            blur_radius=blur_radius,
+        )
+
+        st.success("Obfuscation Complete ✅")
+
+        st.image(output_image, caption="Obfuscated Image", use_column_width=True)
+
+        # Prepare download
+        buffer = io.BytesIO()
+        output_image.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        st.download_button(
+            "Download Obfuscated Image",
+            data=buffer,
+            file_name="obfuscated.png",
+            mime="image/png"
+        )
