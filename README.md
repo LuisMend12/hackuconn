@@ -296,11 +296,5 @@ Possible future improvements:
 * Domain-specific detection rules
 * Model-based quality scoring
 
----
 
-# 📜 License
-
-MIT License — free to use and modify.
-
----
 
