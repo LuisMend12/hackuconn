@@ -1,5 +1,3 @@
----
-
 # 🖼️ Image Dataset Quality Filter for AI Training
 
 A rule-based, explainable image filtering pipeline designed to clean and prepare image datasets for AI / ML training workflows.
