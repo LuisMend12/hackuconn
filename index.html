@@ -1,135 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image inserter</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #1a1b1e;
-      color: #e4e4e4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 1.5rem;
-    }
-    .dropzone {
-      width: 100%;
-      max-width: 420px;
-      min-height: 240px;
-      border: 2px dashed #4a4d54;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      padding: 2rem;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .dropzone:hover,
-    .dropzone.dragover {
-      border-color: #6b8cce;
-      background: rgba(107, 140, 206, 0.08);
-    }
-    .dropzone p {
-      margin: 0;
-      color: #8a8d94;
-      font-size: 0.95rem;
-    }
-    .dropzone input {
-      display: none;
-    }
-    .preview {
-      max-width: 100%;
-      max-height: 60vh;
-      border-radius: 8px;
-      object-fit: contain;
-      margin-top: 1rem;
-    }
-    .preview-wrap {
-      text-align: center;
-    }
-    .preview-wrap .clear {
-      display: inline-block;
-      margin-top: 0.75rem;
-      padding: 0.4rem 0.9rem;
-      font-size: 0.85rem;
-      color: #8a8d94;
-      background: transparent;
-      border: 1px solid #4a4d54;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .preview-wrap .clear:hover {
-      color: #e4e4e4;
-      border-color: #6b8cce;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image inserter</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+
+  background: linear-gradient(135deg, #ff8a00, #ff3cac, #6a00ff);
+  background-size: 200% 200%;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: white;
+}
+
+.dropzone {
+  width: 100%;
+  max-width: 420px;
+  min-height: 240px;
+  border: 2px dashed rgba(255,255,255,0.5);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.dropzone p {
+  margin: 0;
+  color: rgba(255,255,255,0.8);
+  font-size: 0.95rem;
+}
+
+.dropzone input {
+  display: none;
+}
+
+.preview-wrap {
+  text-align: center;
+}
+
+.preview {
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: 8px;
+  object-fit: contain;
+  margin-top: 1rem;
+  display: block;
+  pointer-events: none;
+}
+
+/* Gradient checkmark button: yellow → pink → purple → blue */
+.checkmark-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd93d, #ff6b9d, #9d4edd, #4361ee);
+  background-size: 300% 300%;
+  color: white;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+.checkmark-btn:hover {
+  filter: brightness(1.05);
+}
+</style>
 </head>
+
 <body>
-  <h1>Insert an image</h1>
-  <div class="dropzone" id="dropzone">
-    <input type="file" id="file" accept="image/*">
-    <p>Drop an image here or click to choose</p>
-  </div>
-  <div class="preview-wrap" id="previewWrap" style="display: none;">
-    <img class="preview" id="preview" alt="Preview">
-    <br>
-    <button type="button" class="clear" id="clear">Clear</button>
-  </div>
 
-  <script>
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file');
-    const previewWrap = document.getElementById('previewWrap');
-    const preview = document.getElementById('preview');
-    const clearBtn = document.getElementById('clear');
+<h1>Insert an image</h1>
 
-    function showImage(file) {
-      if (!file || !file.type.startsWith('image/')) return;
-      const url = URL.createObjectURL(file);
-      preview.src = url;
-      previewWrap.style.display = 'block';
-    }
+<div class="dropzone" id="dropzone">
+  <input type="file" id="file" accept="image/*">
+  <p>Drop an image here or click to choose</p>
+</div>
 
-    dropzone.addEventListener('click', () => fileInput.click());
+<div class="preview-wrap" id="previewWrap" style="display:none;">
+  <img class="preview" id="preview" alt="Preview">
+</div>
 
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) showImage(file);
-    });
+<button type="button" id="checkmarkBtn" class="checkmark-btn" aria-label="Confirm">✓</button>
 
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (file) showImage(file);
-    });
+<script src="app.js"></script>
 
-    clearBtn.addEventListener('click', () => {
-      preview.src = '';
-      previewWrap.style.display = 'none';
-      fileInput.value = '';
-    });
-  </script>
 </body>
 </html>
