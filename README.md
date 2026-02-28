@@ -1,38 +1,97 @@
 ---
 
-````markdown
-# 🖼️ Image Dataset Filter for AI Training
+# 🖼️ Image Dataset Quality Filter for AI Training
 
-A rule-based, explainable image filtering pipeline designed to clean and prepare image datasets for AI/ML training.
+A rule-based, explainable image filtering pipeline designed to clean and prepare image datasets for AI / ML training workflows.
 
-This tool helps you automatically detect and remove:
+This tool automatically analyzes images and classifies them into:
 
-- ❌ Corrupt / unreadable images
-- 📏 Images that are too small
-- 🌫️ Very blurry images
-- 🌑 Extremely dark images
-- 🌕 Overexposed / too bright images
-- 📐 Extreme aspect ratios
-- 🔁 Near-duplicate images (perceptual hash based)
+* ✅ KEEP
+* ⚠️ QUARANTINE
+* ❌ DROP
 
-It outputs a structured JSONL report and can optionally organize images into:
-
-- `KEEP`
-- `QUARANTINE`
-- `DROP`
+It generates a structured JSONL report and can optionally reorganize images into separate folders.
 
 ---
 
-# 🚀 Why Use This?
+# 🚀 Why This Exists
 
-When training vision models (ViT, CNNs, object detection, etc.), poor-quality images:
+When training computer vision models (ViT, CNNs, object detection, segmentation, etc.), low-quality images can:
 
-- Reduce accuracy
-- Increase noise
-- Slow convergence
-- Waste compute budget
+* Decrease model accuracy
+* Increase noise in training
+* Slow convergence
+* Waste GPU compute
+* Introduce duplicate bias
 
-This tool gives you **transparent filtering decisions** before training.
+This filter gives you **transparent, explainable quality control** before model training.
+
+---
+
+# 🔍 What It Detects
+
+The filter evaluates each image using measurable signals:
+
+## 1️⃣ Corrupt or Unreadable Files
+
+* Uses PIL verification
+* Automatically dropped
+
+---
+
+## 2️⃣ Resolution Checks
+
+Default minimum:
+
+* Width ≥ 256 px
+* Height ≥ 256 px
+
+Too small → QUARANTINE or DROP
+
+---
+
+## 3️⃣ Blur Detection
+
+Uses **Variance of Laplacian** (standard blur metric):
+
+* Very blurry → DROP
+* Moderately blurry → QUARANTINE
+* Sharp → KEEP
+
+---
+
+## 4️⃣ Brightness Analysis
+
+Based on mean grayscale intensity (0–255):
+
+* Too dark → DROP
+* Slightly dark → QUARANTINE
+* Overexposed → DROP
+
+---
+
+## 5️⃣ Aspect Ratio Outliers
+
+Default acceptable range:
+
+0.25 ≤ width/height ≤ 4.0
+
+Prevents:
+
+* Extreme panoramas
+* Tall cropped artifacts
+* Broken frame extractions
+
+---
+
+## 6️⃣ Duplicate Detection
+
+Uses 64-bit perceptual hash (pHash).
+
+Images with small Hamming distance are treated as duplicates.
+
+* Keeps first instance
+* Drops near-identical copies
 
 ---
 
@@ -40,9 +99,9 @@ This tool gives you **transparent filtering decisions** before training.
 
 Install dependencies:
 
-```bash
+```
 pip install opencv-python pillow tqdm numpy
-````
+```
 
 ---
 
@@ -62,21 +121,27 @@ project/
 
 ---
 
-# 🛠️ How To Run
+# 🛠️ Usage
 
-### Basic Usage
+## Basic Usage
 
-```bash
+```
 python3 image_filter.py \
   --in_dir ./images \
   --out_jsonl report.jsonl
 ```
 
+This:
+
+* Recursively scans all images
+* Analyzes them
+* Produces `report.jsonl`
+
 ---
 
-### With Automatic Sorting
+## With Automatic Sorting
 
-```bash
+```
 python3 image_filter.py \
   --in_dir ./images \
   --out_jsonl report.jsonl \
@@ -85,99 +150,52 @@ python3 image_filter.py \
   --copy_drop_dir drop
 ```
 
-This will:
+This:
 
-* Copy good images into `keep/`
-* Copy questionable images into `quarantine/`
-* Copy bad images into `drop/`
-
----
-
-# 📊 What The Filter Checks
-
-## 1️⃣ Corrupt Images
-
-* Uses PIL verification
-* Automatically dropped
+* Copies good images into `keep/`
+* Moves questionable images into `quarantine/`
+* Moves bad images into `drop/`
 
 ---
 
-## 2️⃣ Minimum Resolution
+# ⚙️ Custom Thresholds
 
-Default:
+Override defaults from the CLI:
 
-* `min_width = 256`
-* `min_height = 256`
+### Resolution
 
-Too small → QUARANTINE or DROP
-
-Override:
-
-```bash
+```
 --min_width 512 --min_height 512
 ```
 
 ---
 
-## 3️⃣ Blur Detection
+### Blur Sensitivity
 
-Uses **Variance of Laplacian**:
-
-* Very blurry → DROP
-* Somewhat blurry → QUARANTINE
-
-Override:
-
-```bash
+```
 --blur_drop 25
 --blur_quarantine 75
 ```
 
----
-
-## 4️⃣ Brightness Detection
-
-Mean grayscale intensity (0–255):
-
-* Too dark → DROP
-* Slightly dark → QUARANTINE
-* Too bright → DROP
+Lower values = stricter blur detection.
 
 ---
 
-## 5️⃣ Aspect Ratio Outliers
-
-Default acceptable range:
+### Duplicate Sensitivity
 
 ```
-0.25 ≤ width/height ≤ 4.0
-```
-
-Prevents extreme panoramas or tall crops.
-
----
-
-## 6️⃣ Duplicate Detection
-
-Uses 64-bit perceptual hash (pHash).
-
-Images with small Hamming distance are treated as duplicates.
-
-Override threshold:
-
-```bash
 --dup_hamming 4
 ```
 
-Lower = stricter duplicate detection.
+Lower values = stricter duplicate detection.
 
 ---
 
-# 📄 Output Format (JSONL)
+# 📊 Output Format (JSONL)
 
-Each line of `report.jsonl` looks like:
+Each line in `report.jsonl` contains:
 
-```json
+```
 {
   "path": "images/img_001.jpg",
   "metrics": {
@@ -201,13 +219,13 @@ Each line of `report.jsonl` looks like:
 
 # 🧠 Decision Logic
 
-| Risk Level | Decision   |
+| Risk Score | Decision   |
 | ---------- | ---------- |
 | < 0.35     | KEEP       |
 | 0.35–0.85  | QUARANTINE |
 | ≥ 0.85     | DROP       |
 
-Duplicates are automatically dropped (keeps first instance).
+Duplicates are dropped automatically (first instance kept).
 
 ---
 
@@ -215,67 +233,55 @@ Duplicates are automatically dropped (keeps first instance).
 
 ### Vision Transformer (ViT) Training
 
-Remove blurry/noisy frames before fine-tuning.
+Remove blurry or dark frames before fine-tuning.
 
-### Dashcam / Roadway Datasets
+### Dashcam / Roadway Dataset Cleaning
 
 Filter:
 
 * Overexposed glare frames
 * Night-only frames
 * Motion-blurred frames
+* Corrupt camera captures
 
 ### Object Detection
 
 Remove:
 
-* Blank images
-* Low-detail frames
-* Corrupt captures
-
----
-
-# ⚙️ Customization
-
-You can modify thresholds in `FilterConfig` inside the script:
-
-```python
-@dataclass
-class FilterConfig:
-    min_width: int = 256
-    min_height: int = 256
-    blur_drop_threshold: float = 30.0
-    ...
-```
+* Blank frames
+* Duplicate extractions
+* Cropped artifacts
 
 ---
 
 # 📈 Scaling to Large Datasets
 
-For datasets >100k images:
+For datasets larger than 100k images:
 
-* Replace linear duplicate scan with BK-tree
-* Store pHashes in SQLite or Redis
-* Parallelize using multiprocessing
+* Replace linear duplicate search with BK-tree
+* Store hashes in SQLite
+* Parallelize with multiprocessing
+* Batch hash comparisons
 
 ---
 
-# 🛑 Important Notes
+# 🛑 Important Limitations
 
-This is a **quality filter**, not a content moderation model.
+This is a **quality filter**, not a content moderation system.
 
 It does NOT detect:
 
 * NSFW content
-* Faces
 * Violence
+* Faces
 * Logos
 * Copyrighted material
+* Illegal content
 
-For that, integrate:
+To extend it, integrate:
 
 * CLIP classifier
-* NSFW detector
+* NSFW model
 * YOLO object detector
 * Face detection
 
@@ -283,35 +289,20 @@ For that, integrate:
 
 # 🔬 Advanced Extensions
 
-Possible improvements:
+Possible future improvements:
 
-* Entropy-based low-information detection
-* Edge density thresholding
+* Edge-density filtering (low-information frames)
 * Histogram clipping detection
 * Motion blur estimation
-* Sky/road-only frame detection
-* Domain-specific heuristics
-
----
-
-# 👨‍💻 Author
-
-Built for AI dataset cleaning and model training pipelines.
+* Sky/road-only heuristics
+* Domain-specific detection rules
+* Model-based quality scoring
 
 ---
 
 # 📜 License
 
-MIT License — use freely and modify.
-
-```
+MIT License — free to use and modify.
 
 ---
 
-If you'd like, I can also generate:
-
-- A **more research-style README (for GitHub portfolio)**
-- A **hackathon-ready README**
-- A **transportation dataset–specific README**
-- Or a **model-evaluation-integrated version (quality score + training cost analysis)**
-```
