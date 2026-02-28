@@ -1,348 +1,164 @@
-# 🖼️ Image Dataset Quality Filter for AI Training
+# 🛡️ HackUConn — AI Image Protection Toolkit
 
-A rule-based, explainable image filtering pipeline designed to clean and prepare image datasets for AI / ML training workflows.
+A comprehensive toolkit for **protecting images from unauthorized AI usage**. Built at HackUConn, this project combines three complementary defense strategies:
 
-This tool automatically analyzes images and classifies them into:
-
-* ✅ KEEP
-* ⚠️ QUARANTINE
-* ❌ DROP
-
-It generates a structured JSONL report and can optionally reorganize images into separate folders.
+| Tool | What it does | Approach |
+|------|-------------|----------|
+| **PhotoGuard** | Blocks AI editing (img2img) | Adversarial perturbation on the VAE latent space |
+| **Image Obfuscator** | Embeds ownership markers & degrades scrapeability | Invisible/visible watermarks, pixelation, blur |
+| **Content Filter** | Screens text & images before they enter training data | PII redaction, toxicity detection, quality scoring, AI-detection via CLIP |
 
 ---
 
-# 🚀 Why This Exists
+## 🚀 Quick Start
 
-When training computer vision models (ViT, CNNs, object detection, segmentation, etc.), low-quality images can:
-
-* Decrease model accuracy
-* Increase noise in training
-* Slow convergence
-* Waste GPU compute
-* Introduce duplicate bias
-
-This filter gives you **transparent, explainable quality control** before model training.
-
----
-
-# 🔍 What It Detects
-
-The filter evaluates each image using measurable signals:
-
-## 1️⃣ Corrupt or Unreadable Files
-
-* Uses PIL verification
-* Automatically dropped
-
----
-
-## 2️⃣ Resolution Checks
-
-Default minimum:
-
-* Width ≥ 256 px
-* Height ≥ 256 px
-
-Too small → QUARANTINE or DROP
-
----
-
-## 3️⃣ Blur Detection
-
-Uses **Variance of Laplacian** (standard blur metric):
-
-* Very blurry → DROP
-* Moderately blurry → QUARANTINE
-* Sharp → KEEP
-
----
-
-## 4️⃣ Brightness Analysis
-
-Based on mean grayscale intensity (0–255):
-
-* Too dark → DROP
-* Slightly dark → QUARANTINE
-* Overexposed → DROP
-
----
-
-## 5️⃣ Aspect Ratio Outliers
-
-Default acceptable range:
-
-0.25 ≤ width/height ≤ 4.0
-
-Prevents:
-
-* Extreme panoramas
-* Tall cropped artifacts
-* Broken frame extractions
-
----
-
-## 6️⃣ Duplicate Detection
-
-Uses 64-bit perceptual hash (pHash).
-
-Images with small Hamming distance are treated as duplicates.
-
-* Keeps first instance
-* Drops near-identical copies
-
----
-
-# 🛡️ AI Image Obfuscator (Nightshade-style)
-
-A separate tool to **obfuscate artwork** so that when used in AI training data, models learn a *destination concept* instead of the true content. Visually the change is minimal (slight gloss or tint); to the model it acts as a training-time poison.
-
-## How it works
-
-1. **Choose your image** – Your original artwork (the one you want to protect).
-2. **Pick a destination concept** – The direction you want generation to drift (e.g. when prompted for your style, the model may start generating *cats* instead).
-3. **Optimize the poison** – The script perturbs the image so that in CLIP embedding space it aligns with the destination concept. During training, this hijacks gradients and steers the model away from correct associations.
-4. **Minimal visual change** – The result may have a slight gloss or colour tint, but to the human eye it still looks like your original. To the model, it’s a training-time landmine.
-
-## Installation (obfuscator)
-
-```
-pip install -r requirements-obfuscator.txt
-```
-
-Or: `pip install torch torchvision open-clip-torch pillow numpy`
-
-## Usage (obfuscator)
+### 1. Clone & set up a virtual environment
 
 ```bash
-# Basic: obfuscate so training drifts toward "cat"
-python image_obfuscator.py --input art.png --output art_obfuscated.png --concept "cat"
-
-# Softer effect (less visible, weaker poison)
-python image_obfuscator.py -i art.png -o art_obfuscated.png -c "landscape" --strength 0.5
-
-# Tune perturbation and steps
-python image_obfuscator.py -i art.png -o out.png -c "dog" --eps 0.02 --steps 150
+git clone https://github.com/LuisMend12/hackuconn.git
+cd hackuconn
+python -m venv venv
+source venv/bin/activate
 ```
 
-**Options:**
+### 2. Install dependencies
 
-| Option | Description |
-|--------|-------------|
-| `--input` / `-i` | Input image path |
-| `--output` / `-o` | Output image path |
-| `--concept` / `-c` | Destination concept (e.g. `"cat"`, `"landscape"`) |
-| `--strength` | 0–1; higher = stronger poison, slightly more visible (default: 1.0) |
-| `--eps` | Max perturbation size; lower = more subtle (default: 0.02) |
-| `--steps` | Optimization steps (default: 100) |
-| `--fallback` | Use tint-only mode (no CLIP); no model association change |
+Choose the requirements file that matches the tool you want to run:
 
-Without `torch` and `open-clip-torch`, the script falls back to a **tint-only** mode (minimal visible change only, no embedding poison).
+```bash
+# PhotoGuard (Stable Diffusion + Streamlit app)
+pip install -r requirements-photoguard.txt
 
----
+# Image Obfuscator (CLIP-based poisoning + watermarking)
+pip install -r requirements-obfuscator.txt
 
-# 📦 Installation
-
-Install dependencies:
-
+# Content / image filter only
+pip install -r requirements.txt
 ```
-pip install opencv-python pillow tqdm numpy
+
+### 3. Run
+
+```bash
+# PhotoGuard app
+streamlit run photoguard_app.py
+
+# Image Obfuscator app
+streamlit run app.py
 ```
 
 ---
 
-# 📂 Project Structure
+## 📸 PhotoGuard — Adversarial Image Protection
 
+Adds an **invisible adversarial perturbation** to an image so that Stable Diffusion's img2img pipeline cannot faithfully edit it.
+
+### How it works
+
+1. Upload an image (resized to 512 × 512).
+2. A PGD (Projected Gradient Descent) attack maximizes the latent-space norm of the image through the Stable Diffusion VAE encoder.
+3. The perturbed image looks nearly identical to the original but produces incoherent results when fed to AI editing tools.
+4. You can **test the protection** in-app by running img2img on both the original and protected images side by side.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `photoguard_app.py` | Streamlit UI — upload, protect, and test |
+| `photoguard_model.py` | Loads & caches the Stable Diffusion img2img pipeline |
+| `photoguard_attack.py` | PGD attack implementation |
+| `photoguard_utils.py` | Image preprocessing & recovery helpers |
+
+### Tunable parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Epsilon | 0.06 | Perturbation bound — higher = stronger protection, more visible |
+| Step size | 0.02 | PGD gradient step size |
+| Iterations | 1000 | Number of PGD steps — more = stronger |
+
+> **Note:** A CUDA GPU is strongly recommended. CPU mode works but is significantly slower.
+
+---
+
+## 🎨 Image Obfuscator — Watermarking & Degradation
+
+A Streamlit app styled like an Instagram dark-mode feed. Applies safe, reversible transformations to discourage AI training on your images.
+
+### Features
+
+- **Invisible watermark** — LSB steganographic marker embedded in pixel data (preserved in PNG, lost in JPEG)
+- **Visible watermark** — configurable text overlay with adjustable opacity and size
+- **Pixelation** — downsamples and re-upsamples to degrade fine detail
+- **Gaussian blur** — softens the image to reduce training signal
+- **Download** — export as PNG (recommended for invisible watermark) or JPEG
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Streamlit UI with Instagram dark-mode design |
+| `image_obfuscator.py` | Core API — `obfuscate_image()`, LSB embed/extract, visible watermark |
+
+---
+
+## 🔍 Content Filter — Text & Image Screening
+
+A rule-based pipeline that labels training data as **KEEP**, **QUARANTINE**, or **DROP** with explainable findings.
+
+### Text filter (`filter.py`)
+
+Detects and redacts:
+- **PII** — emails, phone numbers, SSNs, credit card numbers
+- **Self-harm / violence / sexual content** — phrase-based detection
+- **Prompt injection** — common jailbreak patterns
+- **Low-quality text** — very short or high-entropy strings
+
+```bash
+python filter.py --in data.jsonl --out labeled.jsonl --write_cleaned
 ```
-project/
-│
-├── image_filter.py
-├── README.md
-├── images/                # your dataset
-├── report.jsonl           # generated report
-├── keep/                  # optional
-├── quarantine/            # optional
-└── drop/                  # optional
+
+### Image filter (`filter_images.py`)
+
+Screens images for quality and AI origin:
+- Resolution, aspect ratio, blur, luminance checks
+- Perceptual hash–based duplicate detection
+- **CLIP-based AI-generated image detection** (estimates probability an image is AI-made)
+
+```bash
+python filter_images.py --dir images/ --report report.txt
 ```
 
 ---
 
-# 🛠️ Usage
-
-## Basic Usage
+## 📁 Project Structure
 
 ```
-python3 image_filter.py \
-  --in_dir ./images \
-  --out_jsonl report.jsonl
-```
-
-This:
-
-* Recursively scans all images
-* Analyzes them
-* Produces `report.jsonl`
-
----
-
-## With Automatic Sorting
-
-```
-python3 image_filter.py \
-  --in_dir ./images \
-  --out_jsonl report.jsonl \
-  --copy_keep_dir keep \
-  --copy_quarantine_dir quarantine \
-  --copy_drop_dir drop
-```
-
-This:
-
-* Copies good images into `keep/`
-* Moves questionable images into `quarantine/`
-* Moves bad images into `drop/`
-
----
-
-# ⚙️ Custom Thresholds
-
-Override defaults from the CLI:
-
-### Resolution
-
-```
---min_width 512 --min_height 512
+hackuconn/
+├── photoguard_app.py          # PhotoGuard Streamlit app
+├── photoguard_model.py        # Stable Diffusion pipeline loader
+├── photoguard_attack.py       # PGD adversarial attack
+├── photoguard_utils.py        # Image pre/post-processing
+├── app.py                     # Image Obfuscator Streamlit app
+├── image_obfuscator.py        # Watermark, pixelation, blur logic
+├── filter.py                  # Text content filter (PII, toxicity)
+├── filter_images.py           # Image quality + AI detection filter
+├── index.html                 # Simple image upload page
+├── data.jsonl                 # Sample text data for filter demo
+├── requirements.txt           # Base dependencies
+├── requirements-photoguard.txt
+└── requirements-obfuscator.txt
 ```
 
 ---
 
-### Blur Sensitivity
+## ⚙️ Requirements
 
-```
---blur_drop 25
---blur_quarantine 75
-```
-
-Lower values = stricter blur detection.
+- **Python 3.10+**
+- **CUDA GPU** recommended for PhotoGuard and the image obfuscator's CLIP model
+- ~5 GB disk for Stable Diffusion v1.5 weights (downloaded automatically on first run)
 
 ---
 
-### Duplicate Sensitivity
+## 📄 License
 
-```
---dup_hamming 4
-```
-
-Lower values = stricter duplicate detection.
-
----
-
-# 📊 Output Format (JSONL)
-
-Each line in `report.jsonl` contains:
-
-```
-{
-  "path": "images/img_001.jpg",
-  "metrics": {
-    "width": 1920,
-    "height": 1080,
-    "aspect_ratio": 1.777,
-    "blur_var_lap": 112.4,
-    "mean_luma": 98.2,
-    "phash": 123456789
-  },
-  "decision": {
-    "decision": "KEEP",
-    "reasons": [],
-    "risk": 0.0
-  },
-  "error": null
-}
-```
-
----
-
-# 🧠 Decision Logic
-
-| Risk Score | Decision   |
-| ---------- | ---------- |
-| < 0.35     | KEEP       |
-| 0.35–0.85  | QUARANTINE |
-| ≥ 0.85     | DROP       |
-
-Duplicates are dropped automatically (first instance kept).
-
----
-
-# 🎯 Example Use Cases
-
-### Vision Transformer (ViT) Training
-
-Remove blurry or dark frames before fine-tuning.
-
-### Dashcam / Roadway Dataset Cleaning
-
-Filter:
-
-* Overexposed glare frames
-* Night-only frames
-* Motion-blurred frames
-* Corrupt camera captures
-
-### Object Detection
-
-Remove:
-
-* Blank frames
-* Duplicate extractions
-* Cropped artifacts
-
----
-
-# 📈 Scaling to Large Datasets
-
-For datasets larger than 100k images:
-
-* Replace linear duplicate search with BK-tree
-* Store hashes in SQLite
-* Parallelize with multiprocessing
-* Batch hash comparisons
-
----
-
-# 🛑 Important Limitations
-
-This is a **quality filter**, not a content moderation system.
-
-It does NOT detect:
-
-* NSFW content
-* Violence
-* Faces
-* Logos
-* Copyrighted material
-* Illegal content
-
-To extend it, integrate:
-
-* CLIP classifier
-* NSFW model
-* YOLO object detector
-* Face detection
-
----
-
-# 🔬 Advanced Extensions
-
-Possible future improvements:
-
-* Edge-density filtering (low-information frames)
-* Histogram clipping detection
-* Motion blur estimation
-* Sky/road-only heuristics
-* Domain-specific detection rules
-* Model-based quality scoring
-
-
-
+Built at [HackUConn](https://www.hackuconn.com/). See repository for license details.

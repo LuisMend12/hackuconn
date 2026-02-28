@@ -17,7 +17,6 @@ def get_pipe(device: str | None = None):
         dtype = torch.float16 if device == "cuda" else torch.float32
         _pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
             MODEL_ID,
-            revision="fp16" if device == "cuda" else None,
             torch_dtype=dtype,
         )
         _pipe = _pipe.to(device)
