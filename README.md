@@ -93,6 +93,54 @@ Images with small Hamming distance are treated as duplicates.
 
 ---
 
+# 🛡️ AI Image Obfuscator (Nightshade-style)
+
+A separate tool to **obfuscate artwork** so that when used in AI training data, models learn a *destination concept* instead of the true content. Visually the change is minimal (slight gloss or tint); to the model it acts as a training-time poison.
+
+## How it works
+
+1. **Choose your image** – Your original artwork (the one you want to protect).
+2. **Pick a destination concept** – The direction you want generation to drift (e.g. when prompted for your style, the model may start generating *cats* instead).
+3. **Optimize the poison** – The script perturbs the image so that in CLIP embedding space it aligns with the destination concept. During training, this hijacks gradients and steers the model away from correct associations.
+4. **Minimal visual change** – The result may have a slight gloss or colour tint, but to the human eye it still looks like your original. To the model, it’s a training-time landmine.
+
+## Installation (obfuscator)
+
+```
+pip install -r requirements-obfuscator.txt
+```
+
+Or: `pip install torch torchvision open-clip-torch pillow numpy`
+
+## Usage (obfuscator)
+
+```bash
+# Basic: obfuscate so training drifts toward "cat"
+python image_obfuscator.py --input art.png --output art_obfuscated.png --concept "cat"
+
+# Softer effect (less visible, weaker poison)
+python image_obfuscator.py -i art.png -o art_obfuscated.png -c "landscape" --strength 0.5
+
+# Tune perturbation and steps
+python image_obfuscator.py -i art.png -o out.png -c "dog" --eps 0.02 --steps 150
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--input` / `-i` | Input image path |
+| `--output` / `-o` | Output image path |
+| `--concept` / `-c` | Destination concept (e.g. `"cat"`, `"landscape"`) |
+| `--strength` | 0–1; higher = stronger poison, slightly more visible (default: 1.0) |
+| `--eps` | Max perturbation size; lower = more subtle (default: 0.02) |
+| `--steps` | Optimization steps (default: 100) |
+| `--fallback` | Use tint-only mode (no CLIP); no model association change |
+
+Without `torch` and `open-clip-torch`, the script falls back to a **tint-only** mode (minimal visible change only, no embedding poison).
+
+---
+
 # 📦 Installation
 
 Install dependencies:
