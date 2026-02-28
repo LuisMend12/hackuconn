@@ -1,62 +1,249 @@
 import streamlit as st
-import subprocess
-import shlex
-from pathlib import Path
+from PIL import Image
+import io
 
-st.title("HackUConn Image Tools")
+from image_obfuscator import obfuscate_image
 
-st.subheader("Run Image Obfuscator")
+# -----------------------------
+# Page config
+# -----------------------------
+st.set_page_config(page_title="HackUConn Obfuscator", page_icon="📷", layout="wide")
 
-input_dir = st.text_input("Input Images Folder", value="images")
-output_dir = st.text_input("Output Folder", value="output")
+# -----------------------------
+# Minimal "Instagram-like" CSS
+# -----------------------------
+st.markdown(
+    """
+    <style>
+      /* App background */
+      .stApp {
+        background: linear-gradient(180deg, #fafafa 0%, #f4f4f5 100%);
+      }
 
-log_box = st.empty()
+      /* Make the main area centered and "phone-like" */
+      section.main > div {
+        max-width: 980px;
+        margin: 0 auto;
+        padding-top: 12px;
+      }
 
-def run_command(cmd):
-    log_box.code(f"$ {cmd}\n", language="bash")
-    process = subprocess.Popen(
-        shlex.split(cmd),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
+      /* Card */
+      .ig-card {
+        background: white;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        padding: 14px 14px 10px 14px;
+      }
 
-    logs = ""
-    for line in process.stdout:
-        logs += line
-        log_box.code(f"$ {cmd}\n\n{logs}", language="bash")
+      /* Top bar */
+      .ig-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 10px 12px 10px;
+      }
+      .ig-logo {
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        font-size: 18px;
+      }
+      .ig-icons {
+        display: flex;
+        gap: 10px;
+        opacity: 0.85;
+        font-size: 18px;
+      }
+      .ig-divider {
+        height: 1px;
+        background: rgba(0,0,0,0.08);
+        margin: 6px 0 12px 0;
+      }
 
-    return process.wait()
+      /* Story-like chips */
+      .chip-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 8px 0 8px 0;
+      }
+      .chip {
+        border: 1px solid rgba(0,0,0,0.12);
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #fff;
+        font-size: 13px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+      }
 
-if st.button("Run Image Obfuscator"):
-    cmd = f"python3 image_obfuscator.py --in_dir {input_dir} --out_dir {output_dir}"
-    rc = run_command(cmd)
-    st.success(f"Finished with exit code {rc}")
+      /* Image frame */
+      .img-frame {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.08);
+      }
 
-st.divider()
+      /* Buttons look more "app-like" */
+      div.stButton > button {
+        width: 100%;
+        border-radius: 999px !important;
+        padding: 0.8rem 1rem !important;
+        font-weight: 700 !important;
+        border: 0 !important;
+        background: linear-gradient(90deg, #fd1d1d 0%, #f56040 35%, #f77737 55%, #fcaf45 80%, #ffdc80 100%) !important;
+        color: white !important;
+      }
+      div.stDownloadButton > button {
+        width: 100%;
+        border-radius: 999px !important;
+        padding: 0.8rem 1rem !important;
+        font-weight: 700 !important;
+        border: 1px solid rgba(0,0,0,0.12) !important;
+        background: white !important;
+        color: #111827 !important;
+      }
 
-st.subheader("Run Image Quality Filter")
+      /* Reduce Streamlit header whitespace */
+      header {visibility: hidden;}
+      footer {visibility: hidden;}
 
-report_file = st.text_input("Report Output File", value="report.txt")
+      /* Labels */
+      .section-title {
+        font-size: 14px;
+        font-weight: 800;
+        margin: 8px 0 8px 0;
+        opacity: 0.85;
+      }
+      .muted {
+        font-size: 13px;
+        opacity: 0.7;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-if st.button("Run Image Filter"):
-    cmd = f"python3 filter_images.py --in_dir {input_dir} --out_txt {report_file}"
-    rc = run_command(cmd)
-    st.success(f"Filter completed with exit code {rc}")
+# -----------------------------
+# Layout wrapper
+# -----------------------------
+st.markdown('<div class="ig-card">', unsafe_allow_html=True)
 
-st.divider()
+# Top bar
+st.markdown(
+    """
+    <div class="ig-topbar">
+      <div class="ig-logo">HackUConn • Obfuscator</div>
+      <div class="ig-icons">♡ ⊕ ✉️</div>
+    </div>
+    <div class="ig-divider"></div>
+    """,
+    unsafe_allow_html=True,
+)
 
-st.subheader("Results")
+# Upload
+st.markdown('<div class="section-title">Upload</div>', unsafe_allow_html=True)
+uploaded_file = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "webp"], label_visibility="collapsed")
 
-if Path(output_dir).exists():
-    st.write("Generated files:")
-    for p in sorted(Path(output_dir).glob("*"))[:20]:
-        st.write(str(p))
+# Settings header
+st.markdown('<div class="section-title">Settings</div>', unsafe_allow_html=True)
 
-if Path(report_file).exists():
-    st.download_button(
-        "Download Report",
-        data=open(report_file, "rb"),
-        file_name=report_file,
-    )
+# "Story chip" quick toggles
+chipA, chipB, chipC, chipD = st.columns([1, 1, 1, 1])
+with chipA:
+    pixelate = st.toggle("Pixelate", value=False)
+with chipB:
+    blur = st.toggle("Blur", value=False)
+with chipC:
+    # New: choose watermark mode (works with the upgraded obfuscator)
+    watermark_mode = st.selectbox("Watermark", ["invisible", "visible", "none"], index=0)
+with chipD:
+    fmt = st.selectbox("Download as", ["PNG (recommended)", "JPG"], index=0)
+
+# Detailed controls (collapsed feel)
+with st.expander("More controls", expanded=False):
+    c1, c2 = st.columns(2)
+    with c1:
+        watermark_text = st.text_input("Watermark text / marker", value="DO NOT TRAIN")
+        watermark_opacity = st.slider("Visible watermark opacity", 0, 255, 70, 5, help="Used only if Watermark=visible")
+        watermark_scale = st.slider("Visible watermark size", 0.02, 0.15, 0.06, 0.01, help="Used only if Watermark=visible")
+    with c2:
+        pixelate_factor = st.slider("Pixelate factor", 2, 30, 10, 1, disabled=not pixelate)
+        blur_radius = st.slider("Blur radius", 0.0, 6.0, 1.2, 0.1, disabled=not blur)
+
+st.markdown(
+    f"""
+    <div class="chip-row">
+      <div class="chip">📌 Watermark: <b>{watermark_mode}</b></div>
+      <div class="chip">🧩 Pixelate: <b>{"On" if pixelate else "Off"}</b></div>
+      <div class="chip">🌫️ Blur: <b>{"On" if blur else "Off"}</b></div>
+    </div>
+    <div class="muted">Tip: Use <b>invisible</b> to embed a marker without visible text. Save as <b>PNG</b> to preserve it.</div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<div class="ig-divider"></div>', unsafe_allow_html=True)
+
+# -----------------------------
+# Feed-like image area
+# -----------------------------
+if uploaded_file is not None:
+    original_image = Image.open(uploaded_file).convert("RGB")
+
+    left, right = st.columns([1, 1], gap="large")
+
+    with left:
+        st.markdown('<div class="section-title">Original</div>', unsafe_allow_html=True)
+        st.markdown('<div class="img-frame">', unsafe_allow_html=True)
+        st.image(original_image, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with right:
+        st.markdown('<div class="section-title">Result</div>', unsafe_allow_html=True)
+
+        obfuscate_clicked = st.button("Obfuscate ✨")
+
+        if obfuscate_clicked:
+            output_image = obfuscate_image(
+                original_image,
+                watermark_text=watermark_text,
+                watermark_mode=watermark_mode,
+                watermark_opacity=watermark_opacity,
+                watermark_scale=watermark_scale,
+                pixelate=pixelate,
+                pixelate_factor=pixelate_factor,
+                blur=blur,
+                blur_radius=blur_radius,
+            )
+
+            st.success("Done ✅")
+
+            st.markdown('<div class="img-frame">', unsafe_allow_html=True)
+            st.image(output_image, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Prepare download
+            buffer = io.BytesIO()
+
+            if fmt.startswith("PNG"):
+                output_image.save(buffer, format="PNG")
+                filename = "obfuscated.png"
+                mime = "image/png"
+            else:
+                # JPG may destroy invisible watermark marker (compression)
+                output_image.save(buffer, format="JPEG", quality=95)
+                filename = "obfuscated.jpg"
+                mime = "image/jpeg"
+
+            buffer.seek(0)
+
+            st.download_button(
+                "Download ⬇️",
+                data=buffer,
+                file_name=filename,
+                mime=mime,
+            )
+else:
+    st.info("Upload an image to get started.")
+
+st.markdown("</div>", unsafe_allow_html=True)  # close ig-card
