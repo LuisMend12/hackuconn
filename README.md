@@ -74,7 +74,7 @@ Then open **http://localhost:8501** in your browser.
 
 ---
 
-## Built at [HackUConn](https://www.hackuconn.com/)
+## Built at [HackUConn](https://www.hackuconn.com/), 1st Place Winner in AI & Creativity.
 ---
 
 ## Acknowledgements
